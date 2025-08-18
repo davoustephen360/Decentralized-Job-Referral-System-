@@ -12,6 +12,12 @@
 
 (define-constant reward-amount u1000000)
 (define-constant dispute-voting-period u1008)
+(define-constant tier-1-threshold u3)
+(define-constant tier-2-threshold u10)
+(define-constant tier-3-threshold u25)
+(define-constant bronze-multiplier u110)
+(define-constant silver-multiplier u125)
+(define-constant gold-multiplier u150)
 
 (define-data-var next-referral-id uint u1)
 (define-data-var next-job-id uint u1)
@@ -73,6 +79,9 @@
 (define-map user-referral-count principal uint)
 (define-map user-hire-count principal uint)
 (define-map user-earnings principal uint)
+(define-map user-performance-tier principal uint)
+(define-map user-successful-hires principal uint)
+(define-map tier-thresholds uint {min-hires: uint, bonus-multiplier: uint})
 
 (define-public (create-job (title (string-ascii 100)) (description (string-ascii 500)) (reward uint))
   (let
@@ -151,6 +160,9 @@
     (map-set user-hire-count candidate
       (+ (default-to u0 (map-get? user-hire-count candidate)) u1))
     
+    (map-set user-successful-hires (get referrer referral-info)
+      (+ (default-to u0 (map-get? user-successful-hires (get referrer referral-info))) u1))
+    
     (ok true)
   )
 )
@@ -175,10 +187,18 @@
     
     (var-set contract-balance (- (var-get contract-balance) (get reward job-info)))
     
-    (map-set user-earnings referrer
-      (+ (default-to u0 (map-get? user-earnings referrer)) (get reward job-info)))
-    
-    (ok true)
+    (let
+      (
+        (bonus-multiplier (get-bonus-multiplier referrer))
+        (bonus-reward (/ (* (get reward job-info) bonus-multiplier) u100))
+      )
+      (map-set user-earnings referrer
+        (+ (default-to u0 (map-get? user-earnings referrer)) bonus-reward))
+      
+      (unwrap-panic (update-performance-tier referrer))
+      
+      (ok true)
+    )
   )
 )
 
@@ -308,6 +328,67 @@
 
 (define-read-only (has-voted-on-dispute (dispute-id uint) (voter principal))
   (is-some (map-get? dispute-votes {dispute-id: dispute-id, voter: voter}))
+)
+
+(define-private (get-bonus-multiplier (user principal))
+  (let
+    (
+      (successful-hires (default-to u0 (map-get? user-successful-hires user)))
+    )
+    (if (>= successful-hires tier-3-threshold)
+      gold-multiplier
+      (if (>= successful-hires tier-2-threshold)
+        silver-multiplier
+        (if (>= successful-hires tier-1-threshold)
+          bronze-multiplier
+          u100
+        )
+      )
+    )
+  )
+)
+
+(define-private (update-performance-tier (user principal))
+  (let
+    (
+      (successful-hires (default-to u0 (map-get? user-successful-hires user)))
+      (new-tier 
+        (if (>= successful-hires tier-3-threshold)
+          u3
+          (if (>= successful-hires tier-2-threshold)
+            u2
+            (if (>= successful-hires tier-1-threshold)
+              u1
+              u0
+            )
+          )
+        )
+      )
+    )
+    (map-set user-performance-tier user new-tier)
+    (ok true)
+  )
+)
+
+(define-read-only (get-user-performance (user principal))
+  {
+    performance-tier: (default-to u0 (map-get? user-performance-tier user)),
+    successful-hires: (default-to u0 (map-get? user-successful-hires user)),
+    current-bonus-multiplier: (get-bonus-multiplier user)
+  }
+)
+
+(define-read-only (get-tier-info (tier uint))
+  (if (is-eq tier u1)
+    {tier-name: "Bronze", min-hires: tier-1-threshold, bonus-multiplier: bronze-multiplier}
+    (if (is-eq tier u2)
+      {tier-name: "Silver", min-hires: tier-2-threshold, bonus-multiplier: silver-multiplier}
+      (if (is-eq tier u3)
+        {tier-name: "Gold", min-hires: tier-3-threshold, bonus-multiplier: gold-multiplier}
+        {tier-name: "Starter", min-hires: u0, bonus-multiplier: u100}
+      )
+    )
+  )
 )
 
 (define-read-only (get-next-ids)
