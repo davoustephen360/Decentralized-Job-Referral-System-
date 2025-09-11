@@ -9,6 +9,8 @@
 (define-constant err-dispute-not-found (err u107))
 (define-constant err-voting-ended (err u108))
 (define-constant err-already-voted (err u109))
+(define-constant err-invalid-application (err u110))
+(define-constant err-already-applied (err u111))
 
 (define-constant reward-amount u1000000)
 (define-constant dispute-voting-period u1008)
@@ -22,6 +24,7 @@
 (define-data-var next-referral-id uint u1)
 (define-data-var next-job-id uint u1)
 (define-data-var next-dispute-id uint u1)
+(define-data-var next-application-id uint u1)
 (define-data-var contract-balance uint u0)
 
 (define-map referrals
@@ -76,11 +79,23 @@
   bool
 )
 
+(define-map applications
+  uint
+  {
+    applicant: principal,
+    job-id: uint,
+    cover-letter: (string-ascii 300),
+    applied-at: uint,
+    status: (string-ascii 20)
+  }
+)
+
 (define-map user-referral-count principal uint)
 (define-map user-hire-count principal uint)
 (define-map user-earnings principal uint)
 (define-map user-performance-tier principal uint)
 (define-map user-successful-hires principal uint)
+(define-map job-applications {job-id: uint, applicant: principal} uint)
 (define-map tier-thresholds uint {min-hires: uint, bonus-multiplier: uint})
 
 (define-public (create-job (title (string-ascii 100)) (description (string-ascii 500)) (reward uint))
@@ -104,6 +119,48 @@
     (var-set next-job-id (+ job-id u1))
     (var-set contract-balance (+ (var-get contract-balance) reward))
     (ok job-id)
+  )
+)
+
+(define-public (apply-to-job (job-id uint) (cover-letter (string-ascii 300)))
+  (let
+    (
+      (application-id (var-get next-application-id))
+      (job-info (unwrap! (map-get? jobs job-id) err-invalid-job))
+      (current-block burn-block-height)
+    )
+    (asserts! (get is-active job-info) err-invalid-job)
+    (asserts! (not (is-eq tx-sender (get employer job-info))) err-unauthorized)
+    (asserts! (is-none (map-get? job-applications {job-id: job-id, applicant: tx-sender})) err-already-applied)
+    
+    (map-set applications application-id
+      {
+        applicant: tx-sender,
+        job-id: job-id,
+        cover-letter: cover-letter,
+        applied-at: current-block,
+        status: "submitted"
+      }
+    )
+    
+    (map-set job-applications {job-id: job-id, applicant: tx-sender} application-id)
+    (var-set next-application-id (+ application-id u1))
+    (ok application-id)
+  )
+)
+
+(define-public (update-application-status (application-id uint) (new-status (string-ascii 20)))
+  (let
+    (
+      (application-info (unwrap! (map-get? applications application-id) err-invalid-application))
+      (job-info (unwrap! (map-get? jobs (get job-id application-info)) err-invalid-job))
+    )
+    (asserts! (is-eq tx-sender (get employer job-info)) err-unauthorized)
+    
+    (map-set applications application-id
+      (merge application-info {status: new-status})
+    )
+    (ok true)
   )
 )
 
@@ -330,6 +387,17 @@
   (is-some (map-get? dispute-votes {dispute-id: dispute-id, voter: voter}))
 )
 
+(define-read-only (get-application (application-id uint))
+  (map-get? applications application-id)
+)
+
+(define-read-only (get-user-application-for-job (job-id uint) (applicant principal))
+  (match (map-get? job-applications {job-id: job-id, applicant: applicant})
+    application-id (map-get? applications application-id)
+    none
+  )
+)
+
 (define-private (get-bonus-multiplier (user principal))
   (let
     (
@@ -395,6 +463,7 @@
   {
     next-referral-id: (var-get next-referral-id),
     next-job-id: (var-get next-job-id),
-    next-dispute-id: (var-get next-dispute-id)
+    next-dispute-id: (var-get next-dispute-id),
+    next-application-id: (var-get next-application-id)
   }
 )
