@@ -1,0 +1,19 @@
+[network]
+name = "devnet"
+deployment_fee_rate = 10
+
+[accounts.deployer]
+mnemonic = "female autumn drive capable scorpion congress hockey chunk mouse cherry blame hunt kiss fade sample service trade cool like leader kingdom mention lion tunnel"
+balance = 100_000_000_000_000
+
+[accounts.wallet_1]
+mnemonic = "board list obtain sugar hour worth raven scout denial thunder horse logic fury scorpion fold genuine phrase wealth news aim below celery when cabin"
+balance = 100_000_000_000_000
+
+[accounts.wallet_2]
+mnemonic = "board list obtain sugar hour worth raven scout denial thunder horse logic fury scorpion fold genuine phrase wealth news aim below celery when return"
+balance = 100_000_000_000_000
+
+[accounts.wallet_3]
+mnemonic = "board list obtain sugar hour worth raven scout denial thunder horse logic fury scorpion fold genuine phrase wealth news aim below celery when vocal"
+balance = 100_000_000_000_000
