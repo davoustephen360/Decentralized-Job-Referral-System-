@@ -2,17 +2,9 @@
 name = "simnet"
 
 [accounts.deployer]
-mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+mnemonic = "twice kind fence tip hidden tilt action fragile skin nothing glory cousin green tomorrow spring wrist shed math olympic multiply hip blue scout claw"
 balance = 100_000_000_000_000
 
 [accounts.wallet_1]
-mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon"
-balance = 100_000_000_000_000
-
-[accounts.wallet_2]
-mnemonic = "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong"
-balance = 100_000_000_000_000
-
-[accounts.wallet_3]
-mnemonic = "legal winner thank year wave sausage worth useful legal winner thank yellow"
+mnemonic = "board list obtain sugar hour worth raven scout denial thunder horse logic fury scorpion fold genuine phrase wealth news aim below celery when cabin"
 balance = 100_000_000_000_000

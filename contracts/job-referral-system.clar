@@ -279,6 +279,21 @@
   )
 )
 
+(define-public (update-application-status (application-id uint) (new-status (string-ascii 20)))
+  (let
+    (
+      (application-info (unwrap! (map-get? applications application-id) err-invalid-application))
+      (job-info (unwrap! (map-get? jobs (get job-id application-info)) err-invalid-job))
+      (current-status (get status application-info))
+    )
+    (asserts! (is-eq tx-sender (get employer job-info)) err-unauthorized)
+    (asserts! (is-eq current-status "submitted") err-invalid-application)
+    (asserts! (or (is-eq new-status "accepted") (is-eq new-status "rejected")) err-invalid-application)
+    (map-set applications application-id (merge application-info {status: new-status}))
+    (ok true)
+  )
+)
+
 ;; Enhanced hire verification with reputation updates
 (define-public (verify-hire (job-id uint) (candidate principal) (referral-id uint))
   (let
@@ -702,6 +717,10 @@
 ;; Get rating details
 (define-read-only (get-rating (rating-id uint))
   (map-get? user-ratings rating-id)
+)
+
+(define-read-only (get-application (application-id uint))
+  (map-get? applications application-id)
 )
 
 ;; Get user's received ratings
